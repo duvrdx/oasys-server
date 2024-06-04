@@ -4,7 +4,7 @@ import (
 	"log"
 
 	"github.com/duvrdx/oasys-server/config"
-	ginRouter "github.com/duvrdx/oasys-server/router"
+	appRouter "github.com/duvrdx/oasys-server/router"
 	"github.com/joho/godotenv"
 )
 
@@ -14,8 +14,8 @@ func main() {
 		log.Fatalf("Error loading .env file")
 	}
 
-	router := ginRouter.SetupRoutes()
-
 	config.ConnectDatabase()
+	router := appRouter.SetupRoutes()
+
 	router.Run()
 }

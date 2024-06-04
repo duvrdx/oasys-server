@@ -24,13 +24,15 @@ func ConnectDatabase() {
 		os.Getenv("DB_SSLMODE"),
 	)
 
-	DB, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	database, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
 		log.Fatal("Failed to connect to database!", err)
 	}
 
 	log.Println("Database connected!")
 
-	DB.AutoMigrate(&models.User{})
-	DB.AutoMigrate(&models.Group{})
+	// Run the migrations
+	database.AutoMigrate(&models.User{}, &models.Vault{}, &models.Item{}, &models.Group{}, &models.MasterKey{})
+
+	DB = database
 }

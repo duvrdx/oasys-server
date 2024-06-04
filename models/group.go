@@ -2,6 +2,10 @@ package models
 
 import "gorm.io/gorm"
 
+type GroupInput struct {
+	Name string `json:"name" binding:"required"`
+}
+
 type Group struct {
 	gorm.Model
 	Name string  `json:"name" binding:"required"`
@@ -43,4 +47,10 @@ func (g *Group) BeforeSave(tx *gorm.DB) (err error) {
 
 func (g *Group) AfterSave(tx *gorm.DB) (err error) {
 	return nil
+}
+
+func (g *GroupInput) ToGroup() *Group {
+	return &Group{
+		Name: g.Name,
+	}
 }

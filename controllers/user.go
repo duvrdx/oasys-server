@@ -3,15 +3,25 @@ package controllers
 import (
 	"net/http"
 
-	"github.com/duvrdx/oasys-server/config"
 	"github.com/duvrdx/oasys-server/models"
-
+	"github.com/duvrdx/oasys-server/services"
 	"github.com/gin-gonic/gin"
 )
 
-func GetUsers(c *gin.Context) {
-	var users []models.User
-	config.DB.Find(&users)
+type UserController struct {
+	UserService *services.UserService
+}
+
+func NewUserController(userService *services.UserService) *UserController {
+	return &UserController{UserService: userService}
+}
+
+func (ctl *UserController) GetUsers(c *gin.Context) {
+	users, err := ctl.UserService.GetAllUsers()
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
 
 	publicUsers := make([]models.PublicUser, len(users))
 	for i, user := range users {
@@ -21,57 +31,52 @@ func GetUsers(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"data": publicUsers})
 }
 
-func CreateUser(c *gin.Context) {
-	var input models.User
+func (ctl *UserController) CreateUser(c *gin.Context) {
+	var input models.UserInput
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	config.DB.Create(&input)
-	c.JSON(http.StatusOK, gin.H{"data": input.ToPublicUser()})
-}
-
-func GetUser(c *gin.Context) {
-	var user models.User
-	if err := config.DB.Where("id = ?", c.Param("id")).First(&user).Error; err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Record not found!"})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"data": user.ToPublicUser()})
-}
-
-func UpdateUser(c *gin.Context) {
-	var user models.User
-	if err := config.DB.Where("id = ?", c.Param("id")).First(&user).Error; err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Record not found!"})
-		return
-	}
-
-	var input models.User
-	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	userUpdated, err := user.Update(&input)
+	user, err := ctl.UserService.CreateUser(&input)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	config.DB.Model(&user).Updates(userUpdated)
 	c.JSON(http.StatusOK, gin.H{"data": user.ToPublicUser()})
 }
 
-func DeleteUser(c *gin.Context) {
-	var user models.User
-	if err := config.DB.Where("id = ?", c.Param("id")).First(&user).Error; err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Record not found!"})
+func (ctl *UserController) GetUser(c *gin.Context) {
+	user, err := ctl.UserService.GetUserByID(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	config.DB.Delete(&user)
 	c.JSON(http.StatusOK, gin.H{"data": user.ToPublicUser()})
+}
+
+func (ctl *UserController) UpdateUser(c *gin.Context) {
+	var input models.UserInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	user, err := ctl.UserService.UpdateUser(c.Param("id"), &input)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"data": user.ToPublicUser()})
+}
+
+func (ctl *UserController) DeleteUser(c *gin.Context) {
+	err := ctl.UserService.DeleteUser(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"data": "User deleted successfully"})
 }

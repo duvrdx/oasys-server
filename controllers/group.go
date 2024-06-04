@@ -22,14 +22,16 @@ func GetGroups(c *gin.Context) {
 }
 
 func CreateGroup(c *gin.Context) {
-	var input models.Group
+	var input models.GroupInput
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	config.DB.Create(&input)
-	c.JSON(http.StatusOK, gin.H{"data": input.ToPublicGroup()})
+	group := input.ToGroup()
+
+	config.DB.Create(&group)
+	c.JSON(http.StatusOK, gin.H{"data": group.ToPublicGroup()})
 }
 
 func GetGroup(c *gin.Context) {
@@ -49,13 +51,15 @@ func UpdateGroup(c *gin.Context) {
 		return
 	}
 
-	var input models.Group
+	var input models.GroupInput
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	groupUpdated, err := group.Update(&input)
+	groupToUpdate := input.ToGroup()
+
+	groupUpdated, err := group.Update(groupToUpdate)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return

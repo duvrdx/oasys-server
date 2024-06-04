@@ -5,38 +5,60 @@ import (
 	"gorm.io/gorm"
 )
 
+type UserInput struct {
+	Name     string `json:"name" binding:"required"`
+	Email    string `json:"email" gorm:"unique" binding:"required,email"` // Validate email format
+	Password string `json:"password" binding:"required,min=6"`            // Minimum password length of 6
+}
+
 type User struct {
 	gorm.Model
-	Name     string   `json:"name" binding:"required"`
-	Email    string   `json:"email" gorm:"unique" binding:"required"`
-	Password string   `json:"password" binding:"required"`
-	Groups   []*Group `json:"groups" gorm:"many2many:user_groups;"`
+	Name        string
+	Email       string
+	Password    string
+	Groups      []*Group `gorm:"many2many:user_groups;"`
+	OwnedVaults []Vault  `gorm:"foreignKey:OwnerID"`
+	Vaults      []*Vault `gorm:"many2many:user_vaults;"`
 }
 
 type PublicUser struct {
-	ID        uint     `json:"id"`
-	Name      string   `json:"name"`
-	Email     string   `json:"email"`
-	Groups    []string `json:"groups"`
-	CreatedAt string   `json:"created_at"`
-	UpdatedAt string   `json:"updated_at"`
+	ID          uint     `json:"id"`
+	Name        string   `json:"name"`
+	Email       string   `json:"email"`
+	Groups      []string `json:"groups"`
+	OwnedVaults []uint   `json:"owned_vaults"`
+	Vaults      []uint   `json:"vaults"`
+	CreatedAt   string   `json:"created_at"`
+	UpdatedAt   string   `json:"updated_at"`
 }
 
 func (u *User) ToPublicUser() PublicUser {
 
 	var groups []string
+	var owned_vaults []uint
+	var vaults []uint
+
+	for _, vault := range u.Vaults {
+		vaults = append(vaults, vault.ID)
+	}
+
+	for _, vault := range u.OwnedVaults {
+		owned_vaults = append(owned_vaults, vault.ID)
+	}
 
 	for _, group := range u.Groups {
 		groups = append(groups, group.Name)
 	}
 
 	return PublicUser{
-		ID:        u.ID,
-		Name:      u.Name,
-		Email:     u.Email,
-		Groups:    groups,
-		CreatedAt: u.CreatedAt.String(),
-		UpdatedAt: u.UpdatedAt.String(),
+		ID:          u.ID,
+		Name:        u.Name,
+		Email:       u.Email,
+		Groups:      groups,
+		OwnedVaults: owned_vaults,
+		Vaults:      vaults,
+		CreatedAt:   u.CreatedAt.String(),
+		UpdatedAt:   u.UpdatedAt.String(),
 	}
 }
 
@@ -80,4 +102,12 @@ func (u *User) Update(user *User) (*User, error) {
 func (u *User) CheckPassword(password string) bool {
 	err := bcrypt.CompareHashAndPassword([]byte(u.Password), []byte(password))
 	return err == nil
+}
+
+func (u *UserInput) ToUser() *User {
+	return &User{
+		Name:     u.Name,
+		Email:    u.Email,
+		Password: u.Password,
+	}
 }
